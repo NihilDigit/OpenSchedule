@@ -233,7 +233,7 @@ fun ScheduleTable(
                                 modifier = Modifier
                                     .padding(2.dp)
                                     .offset(y = ((course.startNode - 1) * 80).dp)
-                                    .height((course.endNode - course.startNode + 1) * 80.dp)
+                                    .height(((course.endNode - course.startNode + 1) * 80).dp)
                             )
                         }
                     }

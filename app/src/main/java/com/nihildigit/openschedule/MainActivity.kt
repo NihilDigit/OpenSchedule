@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import com.nihildigit.openschedule.importer.WakeUpScheduleParser
 import com.nihildigit.openschedule.model.Course
 import com.nihildigit.openschedule.ui.schedule.ScheduleScreen
 import com.nihildigit.openschedule.ui.theme.OpenScheduleTheme
@@ -25,17 +26,27 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val courses = loadWakeUpSchedule() ?: getSampleCourses()
         setContent {
             OpenScheduleTheme {
-                ScheduleApp()
+                ScheduleApp(courses)
             }
         }
+    }
+
+    private fun loadWakeUpSchedule(): List<Course>? {
+        val parser = WakeUpScheduleParser()
+        return runCatching {
+            assets.open("未命名.wakeup_schedule").bufferedReader().use { it.readText() }
+        }.mapCatching { parser.parse(it) }
+            .getOrNull()
+            ?.takeIf { it.isNotEmpty() }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScheduleApp() {
+fun ScheduleApp(courses: List<Course>) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -54,7 +65,7 @@ fun ScheduleApp() {
         }
     ) { innerPadding ->
         ScheduleScreen(
-            courses = getSampleCourses(),
+            courses = courses,
             currentWeek = 1,
             maxNode = 12,
             modifier = Modifier.padding(innerPadding)
@@ -226,6 +237,6 @@ fun getSampleCourses(): List<Course> {
 @Composable
 fun ScheduleAppPreview() {
     OpenScheduleTheme {
-        ScheduleApp()
+        ScheduleApp(getSampleCourses())
     }
 }

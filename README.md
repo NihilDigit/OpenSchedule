@@ -123,6 +123,12 @@ ScheduleScreen(
 )
 ```
 
+## 导入 WakeUpSchedule 数据
+
+- 在 `app/src/main/assets/` 目录下放置从 WakeUp 导出的 `*.wakeup_schedule` 文件（项目中默认提供 `未命名.wakeup_schedule` 示例）。
+- 应用启动时会通过 `WakeUpScheduleParser` 自动解析该文件并生成 `Course` 列表；如果解析失败会自动回退到内置示例数据。
+- 如需使用不同文件名或解析规则，可分别调整 `MainActivity.loadWakeUpSchedule()` 与 `WakeUpScheduleParser`。
+
 ## 开发计划
 
 - [ ] 支持从文件导入课程数据
