@@ -10,16 +10,25 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -31,11 +40,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nihildigit.openschedule.importer.WakeUpScheduleParser
 import com.nihildigit.openschedule.model.Course
 import com.nihildigit.openschedule.ui.schedule.ScheduleScreen
@@ -108,23 +120,37 @@ fun ScheduleApp(initialCourses: List<Course>?) {
             TopAppBar(
                 title = {
                     Text(
-                        text = "OpenSchedule 课程表",
-                        fontWeight = FontWeight.Bold
+                        text = "OpenSchedule",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White
-                )
+                ),
+                actions = {
+                    if (!courses.isNullOrEmpty()) {
+                        FilledTonalButton(
+                            onClick = openPicker,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FileUpload,
+                                contentDescription = "导入",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
             )
         }
     ) { innerPadding ->
         val currentCourses = courses
         if (currentCourses.isNullOrEmpty()) {
             WakeUpImportPlaceholder(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+                modifier = Modifier.padding(innerPadding),
                 onImportClick = openPicker
             )
         } else {
@@ -306,29 +332,101 @@ fun ScheduleAppPreview() {
     }
 }
 
+/**
+ * WakeUp导入占位符 - Material Design 3 Expressive风格
+ */
 @Composable
 private fun WakeUpImportPlaceholder(
     modifier: Modifier = Modifier,
     onImportClick: () -> Unit
 ) {
     Column(
-        modifier = modifier.padding(32.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFF8F9FF),
+                        Color(0xFFFEFBFF)
+                    )
+                )
+            )
+            .padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // 图标
+        Surface(
+            modifier = Modifier.size(120.dp),
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
         Text(
-            text = "尚未导入 WakeUp 课表",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            text = "欢迎使用 OpenSchedule",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
         )
+
         Spacer(modifier = Modifier.height(12.dp))
+
         Text(
-            text = "请选择 .wakeup_schedule 或 .ics 文件以继续",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "导入您的 WakeUp 课表文件\n即可开始使用",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 24.sp
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onImportClick) {
-            Text(text = "选择文件")
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "支持 .wakeup_schedule 和 .ics 格式",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        // 导入按钮 - Expressive风格
+        Button(
+            onClick = onImportClick,
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+                .padding(horizontal = 32.dp)
+                .height(56.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.FileUpload,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.size(12.dp))
+            Text(
+                text = "选择文件",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
