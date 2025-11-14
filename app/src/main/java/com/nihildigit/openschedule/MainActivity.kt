@@ -1,11 +1,22 @@
 package com.nihildigit.openschedule
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -13,23 +24,34 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.nihildigit.openschedule.importer.WakeUpScheduleParser
 import com.nihildigit.openschedule.model.Course
 import com.nihildigit.openschedule.ui.schedule.ScheduleScreen
 import com.nihildigit.openschedule.ui.theme.OpenScheduleTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val courses = loadWakeUpSchedule() ?: getSampleCourses()
+        val wakeUpCourses = loadWakeUpSchedule()
         setContent {
             OpenScheduleTheme {
-                ScheduleApp(courses)
+                ScheduleApp(initialCourses = wakeUpCourses)
             }
         }
     }
@@ -46,7 +68,40 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScheduleApp(courses: List<Course>) {
+fun ScheduleApp(initialCourses: List<Course>?) {
+    val context = LocalContext.current
+    val parser = remember { WakeUpScheduleParser() }
+    var courses by remember { mutableStateOf(initialCourses) }
+    val scope = rememberCoroutineScope()
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val parsed = readCoursesFromUri(context, parser, uri)
+            withContext(Dispatchers.Main) {
+                if (parsed.isNullOrEmpty()) {
+                    Toast.makeText(context, "解析失败，请确认文件格式", Toast.LENGTH_SHORT).show()
+                } else {
+                    courses = parsed
+                    takePersistablePermission(context, uri)
+                    Toast.makeText(context, "导入成功", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    val openPicker: () -> Unit = {
+        filePickerLauncher.launch(
+            arrayOf(
+                "text/calendar",
+                "application/octet-stream",
+                "*/*"
+            )
+        )
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -64,12 +119,22 @@ fun ScheduleApp(courses: List<Course>) {
             )
         }
     ) { innerPadding ->
-        ScheduleScreen(
-            courses = courses,
-            currentWeek = 1,
-            maxNode = 12,
-            modifier = Modifier.padding(innerPadding)
-        )
+        val currentCourses = courses
+        if (currentCourses.isNullOrEmpty()) {
+            WakeUpImportPlaceholder(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                onImportClick = openPicker
+            )
+        } else {
+            ScheduleScreen(
+                courses = currentCourses,
+                currentWeek = 1,
+                maxNode = 12,
+                modifier = Modifier.padding(innerPadding)
+            )
+        }
     }
 }
 
@@ -237,6 +302,52 @@ fun getSampleCourses(): List<Course> {
 @Composable
 fun ScheduleAppPreview() {
     OpenScheduleTheme {
-        ScheduleApp(getSampleCourses())
+        ScheduleApp(initialCourses = getSampleCourses())
+    }
+}
+
+@Composable
+private fun WakeUpImportPlaceholder(
+    modifier: Modifier = Modifier,
+    onImportClick: () -> Unit
+) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "尚未导入 WakeUp 课表",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "请选择 .wakeup_schedule 或 .ics 文件以继续",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onImportClick) {
+            Text(text = "选择文件")
+        }
+    }
+}
+
+private suspend fun readCoursesFromUri(
+    context: Context,
+    parser: WakeUpScheduleParser,
+    uri: Uri
+): List<Course>? = withContext(Dispatchers.IO) {
+    runCatching {
+        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+    }.getOrNull()?.let { parser.parse(it) }
+}
+
+private fun takePersistablePermission(context: Context, uri: Uri) {
+    runCatching {
+        context.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
     }
 }

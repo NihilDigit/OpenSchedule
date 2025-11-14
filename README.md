@@ -125,9 +125,10 @@ ScheduleScreen(
 
 ## 导入 WakeUpSchedule 数据
 
-- 在 `app/src/main/assets/` 目录下放置从 WakeUp 导出的 `*.wakeup_schedule` 文件（项目中默认提供 `未命名.wakeup_schedule` 示例）。
-- 应用启动时会通过 `WakeUpScheduleParser` 自动解析该文件并生成 `Course` 列表；如果解析失败会自动回退到内置示例数据。
-- 如需使用不同文件名或解析规则，可分别调整 `MainActivity.loadWakeUpSchedule()` 与 `WakeUpScheduleParser`。
+- 首次启动若未检测到 WakeUp 课表，界面会提示“选择文件”；点击即可通过系统文件选择器导入 `.wakeup_schedule` / `.ics` 文件。
+- 选择完成后应用会使用 `WakeUpScheduleParser` 解析并即时更新课程表，解析失败会提示重新选择。
+- 如果想在开发阶段内置测试数据，可将文件放入 `app/src/main/assets/未命名.wakeup_schedule`，应用会自动读取该资产文件。
+- 更复杂的字段映射或节次规则可以直接在 `WakeUpScheduleParser` 中调整。
 
 ## 开发计划
 
